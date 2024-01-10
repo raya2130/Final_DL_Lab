@@ -1,0 +1,44 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+def get_image(image_path):
+    img = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    return img
+def sobel_edge_detection(img):
+    sobelx = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=3)
+    sobely = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=3)
+    gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
+    gradient_magnitude *= 255.0 / gradient_magnitude.max()
+    gradient_direction = np.arctan2(sobely, sobelx)
+    return gradient_magnitude.astype(np.uint8), gradient_direction
+def non_max_suppression(gradient_magnitude, gradient_direction):
+    angle = gradient_direction * 180.0 / np.pi
+    angle[angle < 0] += 180
+    nms_img = np.zeros_like(gradient_magnitude)
+    for i in range(1, gradient_magnitude.shape[0] - 1):
+        for j in range(1, gradient_magnitude.shape[1] - 1):
+            q = 255
+            r = 255
+            if (0 <= angle[i, j] < 22.5) or (157.5 <= angle[i, j] <= 180):
+                q = gradient_magnitude[i, j+1]
+                r = gradient_magnitude[i, j-1]
+            if (gradient_magnitude[i, j] >= q) and (gradient_magnitude[i, j] >= r):
+                nms_img[i, j] = gradient_magnitude[i, j]
+    return nms_img
+image_path = 'exp_DL.jpg' 
+img = get_image(image_path)
+img_blur = cv2.GaussianBlur(img, (3, 3), 0)
+sobel_img, gradient_direction = sobel_edge_detection(img_blur)
+nms_img = non_max_suppression(sobel_img, gradient_direction)
+plt.figure(figsize=(12, 6))
+plt.subplot(221)
+plt.title("Original Image")
+plt.imshow(img, cmap='gray')
+plt.subplot(222)
+plt.title("Sobel Edge Detection")
+plt.imshow(sobel_img, cmap='gray')
+plt.subplot(223)
+plt.title("After Non-Maximum Suppression")
+plt.imshow(nms_img, cmap='gray')
+plt.tight_layout()
+plt.show()
